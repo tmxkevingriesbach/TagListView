@@ -196,6 +196,19 @@ open class TagListView: UIView {
             }
         }
     }
+
+    @IBInspectable open dynamic var horizontalLayout: Bool = false {
+        didSet {
+            rearrangeViews()
+        }
+    }
+
+    /// if tagMaxWidth is equal 0 then without constraint
+    @IBInspectable open dynamic var tagMaxWidth: CGFloat = 0 {
+        didSet {
+            rearrangeViews()
+        }
+    }
     
     @IBOutlet open weak var delegate: TagListViewDelegate?
     
@@ -238,8 +251,8 @@ open class TagListView: UIView {
         for (index, tagView) in tagViews.enumerated() {
             tagView.frame.size = tagView.intrinsicContentSize
             tagViewHeight = tagView.frame.height
-            
-            if currentRowTagCount == 0 || currentRowWidth + tagView.frame.width > frame.width {
+
+            if currentRowTagCount == 0 || (!horizontalLayout && currentRowWidth + tagView.frame.width > frame.width) {
                 currentRow += 1
                 currentRowWidth = 0
                 currentRowTagCount = 0
@@ -250,8 +263,14 @@ open class TagListView: UIView {
                 addSubview(currentRowView)
 
                 tagView.frame.size.width = min(tagView.frame.size.width, frame.width)
+            } else {
+                currentRowWidth += marginX
             }
-            
+
+            if tagMaxWidth > 0 {
+                tagView.frame.size.width = min(tagView.frame.size.width, tagMaxWidth)
+            }
+
             let tagBackgroundView = tagBackgroundViews[index]
             tagBackgroundView.frame.origin = CGPoint(x: currentRowWidth, y: 0)
             tagBackgroundView.frame.size = tagView.bounds.size
@@ -264,14 +283,14 @@ open class TagListView: UIView {
             currentRowView.addSubview(tagBackgroundView)
             
             currentRowTagCount += 1
-            currentRowWidth += tagView.frame.width + marginX
+            currentRowWidth += tagView.frame.width
             
-            switch alignment {
-            case .left:
+            switch (alignment, horizontalLayout) {
+            case (_, true), (.left, false):
                 currentRowView.frame.origin.x = 0
-            case .center:
+            case (.center, false):
                 currentRowView.frame.origin.x = (frame.width - (currentRowWidth - marginX)) / 2
-            case .right:
+            case (.right, false):
                 currentRowView.frame.origin.x = frame.width - (currentRowWidth - marginX)
             }
             currentRowView.frame.size.width = currentRowWidth
@@ -289,7 +308,9 @@ open class TagListView: UIView {
         if rows > 0 {
             height -= marginY
         }
-        return CGSize(width: frame.width, height: height)
+
+        let width = (horizontalLayout && rowViews.count > 0) ? rowViews[0].frame.width : frame.width
+        return CGSize(width: width, height: height)
     }
     
     private func createNewTagView(_ title: String) -> TagView {
